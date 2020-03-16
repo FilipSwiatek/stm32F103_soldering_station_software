@@ -22,18 +22,18 @@
 #include "main.h"
 #include <stdbool.h>
 
-#define BUTTON_0_PIN GPIO_PIN_0
-#define BUTTON_1_PIN GPIO_PIN_1
-#define BUTTON_2_PIN GPIO_PIN_2
-#define BUTTON_3_PIN GPIO_PIN_10
-#define POT_BUTTON_PIN GPIO_PIN_11
+#define SWITCH_1_PIN GPIO_PIN_0
+#define SWITCH_2_PIN GPIO_PIN_1
+#define SWITCH_3_PIN GPIO_PIN_2
+#define SWITCH_4_PIN GPIO_PIN_10
+#define POT_SWITCH_PIN GPIO_PIN_11
 #define STATUS_LED_PIN GPIO_PIN_13
 
-#define BUTTON_0_PORT GPIOB
-#define BUTTON_1_PORT GPIOB
-#define BUTTON_2_PORT GPIOB
-#define BUTTON_3_PORT GPIOB
-#define POT_BUTTON_PORT GPIOB
+#define SWITCH_1_PORT GPIOB
+#define SWITCH_2_PORT GPIOB
+#define SWITCH_3_PORT GPIOB
+#define SWITCH_4_PORT GPIOB
+#define ENC_SWITCH_PORT GPIOB
 #define STATUS_LED_PORT GPIOC
 
 
@@ -72,10 +72,7 @@ int main(void){
   }
 }
 
-/**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+
 bool SystemClock_Config(void){
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
@@ -265,30 +262,30 @@ static bool MX_GPIO_Init(void){
   __HAL_RCC_GPIOC_CLK_ENABLE();
 
   // initialize buttons
-  GPIO_InitStruct.Pin = BUTTON_0_PIN;
+  GPIO_InitStruct.Pin = SWITCH_1_PIN;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(BUTTON_0_PORT, &GPIO_InitStruct);
+  HAL_GPIO_Init(SWITCH_1_PORT, &GPIO_InitStruct);
 
-  GPIO_InitStruct.Pin = BUTTON_1_PIN;
+  GPIO_InitStruct.Pin = SWITCH_2_PIN;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(BUTTON_1_PORT, &GPIO_InitStruct);
+  HAL_GPIO_Init(SWITCH_2_PORT, &GPIO_InitStruct);
 
-  GPIO_InitStruct.Pin = BUTTON_2_PIN;
+  GPIO_InitStruct.Pin = SWITCH_3_PIN;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(BUTTON_2_PORT, &GPIO_InitStruct);
+  HAL_GPIO_Init(SWITCH_3_PORT, &GPIO_InitStruct);
 
-  GPIO_InitStruct.Pin = BUTTON_3_PIN;
+  GPIO_InitStruct.Pin = SWITCH_4_PIN;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(BUTTON_3_PORT, &GPIO_InitStruct);
+  HAL_GPIO_Init(SWITCH_4_PORT, &GPIO_InitStruct);
 
-  GPIO_InitStruct.Pin = POT_BUTTON_PIN;
+  GPIO_InitStruct.Pin = POT_SWITCH_PIN;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(POT_BUTTON_PORT, &GPIO_InitStruct);
+  HAL_GPIO_Init(ENC_SWITCH_PORT, &GPIO_InitStruct);
 
   //initialize status diode
   GPIO_InitStruct.Pin = STATUS_LED_PIN;
