@@ -24,7 +24,13 @@
 #include "ssd1306.h"
 #include "devices.h"
 
+#define STARTUP_TEMP 270
+#define SETUP_MODE_TIMEOUT 3000
+
 bool SystemClock_Config(void);
+void TempSetupProc(void);
+
+
 
 
 int main(void){
@@ -87,6 +93,56 @@ bool SystemClock_Config(void){
 void Error_Handler(void){
 	HAL_GPIO_WritePin(STATUS_LED_PORT, STATUS_LED_PIN, GPIO_PIN_RESET); // turn status diode on
 	while(1);
+}
+
+volatile bool wasEncoderButtonPressed;
+
+// sterownik zadanej temperatury będzie mrugał wybieraną cyfrą, więc isNowSetupMode będzie trzeba zrobić globalne, albo w strukturze
+
+void TempSetupProc(void){
+	static bool isNowSetupMode; // determines if station should follow desired temp or wait for end of the setup
+	static uint16_t SetTemp = STARTUP_TEMP; // temperature set for controller. This is the important one for PID
+	static uint16_t DesiredTemp = STARTUP_TEMP;
+	static uint8_t digit;
+	static uint32_t StartOfSetupModeTimestamp;
+	int8_t encoderOffset = EncoderGetOffset();
+
+	//checking if setup mode should start
+	if(encoderOffset || wasEncoderButtonPressed){ // if encoder position changed or button has been clicked
+		StartOfSetupModeTimestamp = HAL_GetTick();
+		isNowSetupMode = true;
+	}
+
+	if(isNowSetupMode){
+		if(wasEncoderButtonPressed){
+				if(digit == 0){
+					digit = 1; // changing digit
+				}else{
+					digit = 0; // changing digit
+				}
+				wasEncoderButtonPressed = false;
+			}
+
+			if(digit == 1){
+				DesiredTemp += 10 * encoderOffset;
+			}else{
+				DesiredTemp += encoderOffset;
+			}
+
+			if(DesiredTemp < 150){
+				DesiredTemp = 150;
+			}else if(DesiredTemp > 450){
+				DesiredTemp = 450;
+			}
+	}else{ // if setup mode terminated
+		SetTemp = DesiredTemp; // changing Set Temperature
+	}
+
+	if(HAL_GetTick() - StartOfSetupModeTimestamp > SETUP_MODE_TIMEOUT){
+		isNowSetupMode = false; // exit setup mode
+	}
+
+	//TODO przekazać SetTemp do regulatora PID
 }
 
 
