@@ -25,6 +25,8 @@
 #define ENC_SWITCH_PORT GPIOB
 #define STATUS_LED_PORT GPIOC
 
+#define ENCODER_FAILURE_TIMEOUT 1000
+
 
 int8_t EncoderGetOffset(void);
 void BuzzerBeep(void);

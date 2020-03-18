@@ -23,20 +23,28 @@
 #include <stdbool.h>
 #include "ssd1306.h"
 #include "devices.h"
+#include <stdio.h>
 
 #define STARTUP_TEMP 270
-#define SETUP_MODE_TIMEOUT 3000
+#define SETUP_MODE_TIMEOUT 2000
+#define VERTICAL_DISPLAY_OFFSET 17
+#define HORIZONTAL_DISPLAY_OFFSET 25
+#define SETUP_BLINKING_DIGIT_TIME 200
 
-bool SystemClock_Config(void);
-void TempSetupProc(void);
+volatile static bool wasEncoderButtonPressed;
+static uint16_t TemporarlySetTemp = STARTUP_TEMP; // temperature used in setup mode
+static uint16_t SetTemp = STARTUP_TEMP; // temperature set for controller. This is the important one for PID
+static bool isNowSetupMode; // determines if TemporarilySetTemp should be written to SetTemp variable
+static uint8_t setDigit; // determines which digit is set by encoder (tens or ones)
 
-
+bool static SystemClock_Config(void);
+void static TempSetupProc(void);
+void static DisplayProc(void);
 
 
 int main(void){
   HAL_Init();
   if(!SystemClock_Config()) Error_Handler();
-
   if(!GPIO_Init()) Error_Handler();
   if(!ADC1_Init()) Error_Handler();
   if(!I2C1_Init()) Error_Handler();
@@ -45,15 +53,14 @@ int main(void){
   if(!TIM3_Init()) Error_Handler();
   if(!USART1_UART_Init()) Error_Handler();
   ssd1306_Init();
-  ssd1306_Fill(White);
-  ssd1306_UpdateScreen();
   while (1){
 	  StatusLED_Proc();
-	  EncoderGetOffset();
+	  TempSetupProc();
+	  DisplayProc();
   }
 }
 
-bool SystemClock_Config(void){
+bool static SystemClock_Config(void){
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
   RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
@@ -95,54 +102,88 @@ void Error_Handler(void){
 	while(1);
 }
 
-volatile bool wasEncoderButtonPressed;
-
 // sterownik zadanej temperatury będzie mrugał wybieraną cyfrą, więc isNowSetupMode będzie trzeba zrobić globalne, albo w strukturze
 
-void TempSetupProc(void){
-	static bool isNowSetupMode; // determines if station should follow desired temp or wait for end of the setup
-	static uint16_t SetTemp = STARTUP_TEMP; // temperature set for controller. This is the important one for PID
-	static uint16_t DesiredTemp = STARTUP_TEMP;
-	static uint8_t digit;
+void static TempSetupProc(void){
 	static uint32_t StartOfSetupModeTimestamp;
-	int8_t encoderOffset = EncoderGetOffset();
+	int8_t encoderOffset = 0;
 
+	encoderOffset = EncoderGetOffset();
 	//checking if setup mode should start
 	if(encoderOffset || wasEncoderButtonPressed){ // if encoder position changed or button has been clicked
 		StartOfSetupModeTimestamp = HAL_GetTick();
 		isNowSetupMode = true;
 	}
 
+
 	if(isNowSetupMode){
 		if(wasEncoderButtonPressed){
-				if(digit == 0){
-					digit = 1; // changing digit
+				if(setDigit == 0){
+					setDigit = 1; // changing digit
 				}else{
-					digit = 0; // changing digit
+					setDigit = 0; // changing digit
 				}
 				wasEncoderButtonPressed = false;
 			}
 
-			if(digit == 1){
-				DesiredTemp += 10 * encoderOffset;
+			if(setDigit == 1){
+				TemporarlySetTemp += 10 * encoderOffset;
 			}else{
-				DesiredTemp += encoderOffset;
+				TemporarlySetTemp += encoderOffset;
 			}
 
-			if(DesiredTemp < 150){
-				DesiredTemp = 150;
-			}else if(DesiredTemp > 450){
-				DesiredTemp = 450;
+			if(TemporarlySetTemp < 150){
+				TemporarlySetTemp = 150;
+			}else if(TemporarlySetTemp > 450){
+				TemporarlySetTemp = 450;
 			}
 	}else{ // if setup mode terminated
-		SetTemp = DesiredTemp; // changing Set Temperature
+		SetTemp = TemporarlySetTemp; // changing Set Temperature
 	}
 
 	if(HAL_GetTick() - StartOfSetupModeTimestamp > SETUP_MODE_TIMEOUT){
 		isNowSetupMode = false; // exit setup mode
 	}
+}
 
-	//TODO przekazać SetTemp do regulatora PID
+//TODO przekazać SetTemp do regulatora PID
+
+void static DisplayProc(void){
+	static uint32_t lastBlinkTimeStamp;
+	uint16_t cursor_backup[2]={0,0}; // value needed to store current cursor position
+	char temperatureString[4];  // temperature i Celsius degrees
+	char pseudoDegree = 'o'; // pseudo-degree
+	char CelsiusUnit='C'; // Celsius unit
+	ssd1306_Fill(Black); // black background
+	sprintf(temperatureString, "%d", TemporarlySetTemp);
+
+	if(isNowSetupMode && HAL_GetTick() - lastBlinkTimeStamp > SETUP_BLINKING_DIGIT_TIME ){
+		switch(setDigit){
+		case 0:
+			temperatureString[2] = ' ';
+			break;
+		case 1:
+			temperatureString[1] = ' ';
+			break;
+		default:
+			break;
+		}
+	}
+
+	ssd1306_SetCursor(HORIZONTAL_DISPLAY_OFFSET, 3 + VERTICAL_DISPLAY_OFFSET); // setting offset for cursor to reach pseudo- degree effect using 'o'
+	ssd1306_WriteString(temperatureString, Font_16x26, White); //wrinting decimal temperature value in Celsius degrees
+	ssd1306_GetCursor(cursor_backup); // getting current cursor position
+	ssd1306_SetCursor(cursor_backup[0]+2, 0 + VERTICAL_DISPLAY_OFFSET); // switching vertical position for pseudo-degree
+	ssd1306_WriteChar(pseudoDegree, Font_11x18, White); // printing pseudo degree character
+	ssd1306_GetCursor(cursor_backup); // getting current cursor position
+	ssd1306_SetCursor(cursor_backup[0]-2, 3 + VERTICAL_DISPLAY_OFFSET); // switching vertical position back to previous
+	ssd1306_WriteChar(CelsiusUnit, Font_16x26, White); // Writing 'C' character
+
+	ssd1306_UpdateScreen();
+	if(HAL_GetTick() - lastBlinkTimeStamp > 1.1 * SETUP_BLINKING_DIGIT_TIME){
+					lastBlinkTimeStamp = HAL_GetTick();
+				}
+
 }
 
 

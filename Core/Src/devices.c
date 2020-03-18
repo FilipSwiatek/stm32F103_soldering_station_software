@@ -17,16 +17,22 @@
 
 // Encoder
 int8_t EncoderGetOffset(void){
-	int32_t rest = 0;
 	int32_t enc_val = ((int32_t)TIM1->CNT)-0xFF;
-	TIM1->CNT = 0xFF;
-	if(enc_val%4 < 0){
-		rest = -1;
-	}else if(enc_val%4 > 0){
-		rest = -1;
+	static uint8_t misscountCounter;
+	static uint32_t lastNonFailureEncoderStepTimestamp;
+	if(enc_val >= 4 || enc_val <= -4){
+		enc_val = enc_val / 4;
+		lastNonFailureEncoderStepTimestamp = HAL_GetTick();
+		TIM1->CNT = 0xFF;
+	}else{
+		misscountCounter++;
+		enc_val = 0;
 	}
-	enc_val = enc_val / 4 + rest;
 
+	if(HAL_GetTick() - lastNonFailureEncoderStepTimestamp > ENCODER_FAILURE_TIMEOUT){
+		TIM1->CNT = 0xFF;
+		misscountCounter = 0;
+	}
 	return enc_val;
 }
 

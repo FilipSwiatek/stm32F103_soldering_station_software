@@ -240,3 +240,13 @@ void ssd1306_SetCursor(uint8_t x, uint8_t y) {
     SSD1306.CurrentX = x;
     SSD1306.CurrentY = y;
 }
+
+void ssd1306_GetCursor(uint16_t* table){
+	if(table != NULL){
+		table[0] = SSD1306.CurrentX;
+		table[1] = SSD1306.CurrentY;
+	}
+
+}
+
+
