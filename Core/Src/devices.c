@@ -5,15 +5,10 @@
  *      Author: Snickers
  */
 
-
 #include <devices.h>
 #include <stdbool.h>
 #include "stm32f1xx_hal.h"
 #include "stm32f1xx_it.h"
-
-
-
-
 
 // Encoder
 int8_t EncoderGetOffset(void){
@@ -36,9 +31,10 @@ int8_t EncoderGetOffset(void){
 	return enc_val;
 }
 
-
-
-
+uint16_t GetCurrentTemperature(){
+	//TODO - to develop
+	return 250;
+}
 
 //------------------Basic IOs
 
@@ -123,7 +119,7 @@ return true;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK){
     return false;
   }
-  htim1.Instance->CNT = 1000;
+  htim1.Instance->CNT = 0xFF;
   htim1.Instance->CR1 |= TIM_CR1_CEN;
 return true;
 }

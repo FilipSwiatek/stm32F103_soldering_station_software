@@ -27,7 +27,6 @@
 
 #define ENCODER_FAILURE_TIMEOUT 1000
 
-
 int8_t EncoderGetOffset(void);
 void BuzzerBeep(void);
 void HeaterSetDutyCycle(uint8_t percent);

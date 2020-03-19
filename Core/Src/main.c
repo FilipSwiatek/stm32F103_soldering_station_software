@@ -41,18 +41,17 @@ bool static SystemClock_Config(void);
 void static TempSetupProc(void);
 void static DisplayProc(void);
 
-
 int main(void){
   HAL_Init();
   if(!SystemClock_Config()) Error_Handler();
   if(!GPIO_Init()) Error_Handler();
   if(!ADC1_Init()) Error_Handler();
   if(!I2C1_Init()) Error_Handler();
+  ssd1306_Init();
   if(!TIM1_Init()) Error_Handler();
   if(!TIM2_Init()) Error_Handler();
   if(!TIM3_Init()) Error_Handler();
   if(!USART1_UART_Init()) Error_Handler();
-  ssd1306_Init();
   while (1){
 	  StatusLED_Proc();
 	  TempSetupProc();
@@ -102,7 +101,6 @@ void Error_Handler(void){
 	while(1);
 }
 
-// sterownik zadanej temperatury będzie mrugał wybieraną cyfrą, więc isNowSetupMode będzie trzeba zrobić globalne, albo w strukturze
 
 void static TempSetupProc(void){
 	static uint32_t StartOfSetupModeTimestamp;
@@ -114,7 +112,6 @@ void static TempSetupProc(void){
 		StartOfSetupModeTimestamp = HAL_GetTick();
 		isNowSetupMode = true;
 	}
-
 
 	if(isNowSetupMode){
 		if(wasEncoderButtonPressed){
@@ -142,20 +139,26 @@ void static TempSetupProc(void){
 	}
 
 	if(HAL_GetTick() - StartOfSetupModeTimestamp > SETUP_MODE_TIMEOUT){
+		setDigit = 0; //returning to less significant digit
 		isNowSetupMode = false; // exit setup mode
 	}
 }
 
-//TODO przekazać SetTemp do regulatora PID
-
 void static DisplayProc(void){
 	static uint32_t lastBlinkTimeStamp;
+	uint16_t temperature;
 	uint16_t cursor_backup[2]={0,0}; // value needed to store current cursor position
 	char temperatureString[4];  // temperature i Celsius degrees
 	char pseudoDegree = 'o'; // pseudo-degree
 	char CelsiusUnit='C'; // Celsius unit
 	ssd1306_Fill(Black); // black background
-	sprintf(temperatureString, "%d", TemporarlySetTemp);
+
+	if(isNowSetupMode){
+		temperature = TemporarlySetTemp;
+	}else{
+		temperature = GetCurrentTemperature();
+	}
+	sprintf(temperatureString, "%d", temperature);
 
 	if(isNowSetupMode && HAL_GetTick() - lastBlinkTimeStamp > SETUP_BLINKING_DIGIT_TIME ){
 		switch(setDigit){
@@ -169,7 +172,6 @@ void static DisplayProc(void){
 			break;
 		}
 	}
-
 	ssd1306_SetCursor(HORIZONTAL_DISPLAY_OFFSET, 3 + VERTICAL_DISPLAY_OFFSET); // setting offset for cursor to reach pseudo- degree effect using 'o'
 	ssd1306_WriteString(temperatureString, Font_16x26, White); //wrinting decimal temperature value in Celsius degrees
 	ssd1306_GetCursor(cursor_backup); // getting current cursor position
@@ -186,7 +188,11 @@ void static DisplayProc(void){
 
 }
 
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if(GPIO_Pin == POT_SWITCH_PIN ){
+		wasEncoderButtonPressed = true;
+	}
+}
 
 #ifdef  USE_FULL_ASSERT
 /**
