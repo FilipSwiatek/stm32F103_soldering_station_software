@@ -15,7 +15,7 @@
 #define SWITCH_2_PIN GPIO_PIN_1
 #define SWITCH_3_PIN GPIO_PIN_2
 #define SWITCH_4_PIN GPIO_PIN_10
-#define POT_SWITCH_PIN GPIO_PIN_11
+#define ENCODER_SWITCH_PIN GPIO_PIN_11
 #define STATUS_LED_PIN GPIO_PIN_13
 
 #define SWITCH_1_PORT GPIOB
@@ -26,6 +26,17 @@
 #define STATUS_LED_PORT GPIOC
 
 #define ENCODER_FAILURE_TIMEOUT 1000
+
+// Heater PWM
+void SetHeaterPower(uint16_t perMile);
+void TurnHeaterOn();
+void TurnHeaterOff();
+
+// Buzzer
+void TurnBuzzerOn();
+void TurnBuzzerOff();
+void BuzzerSetFrequency(uint16_t kiloHerzes);
+
 
 int8_t EncoderGetOffset(void);
 void BuzzerBeep(void);

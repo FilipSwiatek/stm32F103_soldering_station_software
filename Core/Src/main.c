@@ -189,7 +189,7 @@ void static DisplayProc(void){
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-	if(GPIO_Pin == POT_SWITCH_PIN ){
+	if(GPIO_Pin == ENCODER_SWITCH_PIN ){
 		wasEncoderButtonPressed = true;
 	}
 }

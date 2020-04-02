@@ -10,6 +10,45 @@
 #include "stm32f1xx_hal.h"
 #include "stm32f1xx_it.h"
 
+
+ADC_HandleTypeDef hadc1;
+I2C_HandleTypeDef hi2c1;
+TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
+UART_HandleTypeDef huart1;
+
+
+// Heater PWM
+void SetHeaterPower(uint16_t perMile){
+	if(perMile > 1000 ) perMile = 1000;
+	TIM2->CCR3 = perMile;
+	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, perMile);
+}
+void TurnHeaterOn(){
+	HAL_TIMEx_PWMN_Start(&htim2, TIM_CHANNEL_3);
+}
+void TurnHeaterOff(){
+	HAL_TIMEx_PWMN_Stop(&htim2, TIM_CHANNEL_3);
+}
+
+// Buzzer
+
+
+void TurnBuzzerOn(){
+	HAL_TIMEx_PWMN_Start(&htim3, TIM_CHANNEL_1);
+}
+
+void TurnBuzzerOff(){
+	HAL_TIMEx_PWMN_Stop(&htim3, TIM_CHANNEL_1);
+}
+
+void BuzzerSetFrequency(uint16_t kiloHerzes){
+	__HAL_TIM_SET_PRESCALER(&htim3, 1000000/kiloHerzes);
+}
+
+
+
 // Encoder
 int8_t EncoderGetOffset(void){
 	int32_t enc_val = ((int32_t)TIM1->CNT)-0xFF;
@@ -39,13 +78,6 @@ uint16_t GetCurrentTemperature(){
 //------------------Basic IOs
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-
-ADC_HandleTypeDef hadc1;
-I2C_HandleTypeDef hi2c1;
-TIM_HandleTypeDef htim1;
-TIM_HandleTypeDef htim2;
-TIM_HandleTypeDef htim3;
-UART_HandleTypeDef huart1;
 
  bool ADC1_Init(void){
   ADC_ChannelConfTypeDef sConfig = {0};
@@ -131,9 +163,9 @@ return true;
   TIM_OC_InitTypeDef sConfigOC = {0};
 
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
+  htim2.Init.Prescaler = 36; // because TIM clock is 36MHz
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 0;
+  htim2.Init.Period = 1000; // because after prescaler clock is 1MHz, and desired PWM frequency is 1kHz
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK){
@@ -170,9 +202,9 @@ return true;
   TIM_OC_InitTypeDef sConfigOC = {0};
 
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
+  htim3.Init.Prescaler = 1000;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 0;
+  htim3.Init.Period = 36;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -206,6 +238,9 @@ return true;
 
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 18);
+
+
   return true;
 
 }
@@ -256,7 +291,7 @@ return true;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(SWITCH_4_PORT, &GPIO_InitStruct);
 
-  GPIO_InitStruct.Pin = POT_SWITCH_PIN;
+  GPIO_InitStruct.Pin = ENCODER_SWITCH_PIN;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(ENC_SWITCH_PORT, &GPIO_InitStruct);
