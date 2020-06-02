@@ -48,24 +48,23 @@ void BuzzerSetFrequency(uint16_t kiloHerzes){
 }
 
 
-
 // Encoder
 int8_t EncoderGetOffset(void){
 	int32_t enc_val = ((int32_t)TIM1->CNT)-0xFF;
-	static uint8_t misscountCounter;
 	static uint32_t lastNonFailureEncoderStepTimestamp;
+
 	if(enc_val >= 4 || enc_val <= -4){
+		TIM1->CNT -= enc_val;
 		enc_val = enc_val / 4;
 		lastNonFailureEncoderStepTimestamp = HAL_GetTick();
-		TIM1->CNT = 0xFF;
+
 	}else{
-		misscountCounter++;
+
 		enc_val = 0;
 	}
 
 	if(HAL_GetTick() - lastNonFailureEncoderStepTimestamp > ENCODER_FAILURE_TIMEOUT){
 		TIM1->CNT = 0xFF;
-		misscountCounter = 0;
 	}
 	return enc_val;
 }
